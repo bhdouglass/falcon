@@ -1,0 +1,15 @@
+{
+    "architecture": "armhf",
+    "description": "Falcon App Launcher",
+    "framework": "ubuntu-sdk-15.04",
+    "hooks": {
+        "falcon": {
+            "apparmor": "falcon.apparmor",
+            "scope": "falcon"
+        }
+    },
+    "maintainer": "Brian Douglass <bhdouglass@gmail.com>",
+    "name": "falcon.bhdouglass",
+    "title": "Falcon",
+    "version": "1.0"
+}

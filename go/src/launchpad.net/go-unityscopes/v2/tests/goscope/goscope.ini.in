@@ -1,0 +1,15 @@
+[ScopeConfig]
+ScopeRunner=$GOPATH$/bin/goscope --runtime %R --scope %S
+DisplayName = mock.DisplayName
+Description = mock.Description
+Author = test
+Art = mock.Art
+Icon = /mock.Icon
+SearchHint = mock.SearchHint
+HotKey = mock.HotKey
+
+[Appearance]
+PageHeader.Logo = http://assets.ubuntu.com/sites/ubuntu/1110/u/img/logos/logo-ubuntu-orange.svg
+PageHeader.ForegroundColor = white
+PageHeader.Background = color://black
+ShapeImages = false
