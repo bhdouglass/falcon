@@ -7,6 +7,20 @@ An alternative Ubuntu Touch app & scope launcher
 The Falcon is a family of rockets developed by SpaceX for carrying payloads into
 space. For more information check out this [Wikipedia article](https://en.wikipedia.org/wiki/Falcon_1).
 
+## Build ##
+
+* Install NPM
+    * `sudo apt-get install npm`
+* Install click chroot dependencies
+    * `sudo click chroot -aarmhf -fubuntu-sdk-15.04 -s vivid maint apt-get install golang-go golang-go-linux-arm libglib2.0-dev:armhf crossbuild-essential-armhf`
+* Install build dependencies
+    * `npm install -g gulp` (May need sudo)
+    * `npm install`
+* Test locally
+    * `gulp run`
+* Build click package
+    * `gulp build-click`
+
 ## Resources ##
 
 - [Docs for go-unityscopes](https://godoc.org/launchpad.net/go-unityscopes/v2)
