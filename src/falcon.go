@@ -27,10 +27,10 @@ const searchCategoryTemplate = ` {
 }`
 
 type ActionInfo struct {
-    Id    string
-    Label string
-    Icon  string
-    Uri   string
+	Id    string `json:"id"`
+	Label string `json:"label"`
+	Icon  string `json:"icon,omitempty"`
+	Uri   string `json:"uri,omitempty"`
 }
 
 type Application struct {
@@ -83,10 +83,9 @@ func (s *Falcon) Preview(result *scopes.Result, metadata *scopes.ActionMetadata,
 
     commentWidget := scopes.NewPreviewWidget("content", "text")
     commentWidget.AddAttributeValue("text", app.Comment)
-    //commentWidget.AddAttributeValue("text", app.Desktop)
 
     var buttons []ActionInfo
-    buttons = append(buttons, ActionInfo{Id: "open", Uri: app.Uri, Label: "Open"})
+    buttons = append(buttons, ActionInfo{Id: "launch", Uri: app.Uri, Label: "Launch"})
 
     actionsWidget := scopes.NewPreviewWidget("actions", "actions")
     actionsWidget.AddAttributeValue("actions", buttons)
@@ -215,7 +214,9 @@ func (s *Falcon) addApps(query string, reply *scopes.SearchReply) error {
             scope.Icon = remoteScope.Icon
             scope.Uri = fmt.Sprintf("scope://%s", remoteScope.Id)
 
-            scopeList = append(scopeList, scope)
+            if (query == "" || strings.Index(strings.ToLower(scope.Title), strings.ToLower(query)) >= 0) {
+                scopeList = append(scopeList, scope)
+            }
         }
     }
 
