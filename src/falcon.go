@@ -3,9 +3,11 @@ package main
 import (
     "encoding/json"
     "fmt"
+    "github.com/gosexy/gettext"
     "io/ioutil"
     "launchpad.net/go-unityscopes/v2"
     "log"
+    "os"
     "sort"
     "strings"
 )
@@ -127,36 +129,76 @@ func (s *Falcon) addApps(query string, reply *scopes.SearchReply) error {
                     scope := false
                     onlyShowIn := "unity"
 
+                    desktopMap := map[string] string{}
                     for _, line := range lines {
                         split := strings.Split(line, "=")
                         if (len(split) >= 2) {
                             key := split[0]
                             lkey := strings.ToLower(key)
                             value := strings.Replace(line, key + "=", "", 1)
-                            lvalue := strings.ToLower(value)
 
-                            if (lkey == "name") {
-                                app.Title = value
-                            } else if (lkey == "icon") {
-                                if (value == "media-memory-sd") { //Special exception for the "External Drives" app
-                                    app.Icon = "file:///usr/share/icons/Humanity/devices/48/media-memory-sd.svg"
-                                } else if (value != "" && value[0:1] == "/") {
-                                    app.Icon = "file://" + value
-                                } else {
-                                    app.Icon = "file:///usr/share/icons/suru/apps/128/placeholder-app-icon.png"
-                                }
-                            } else if (lkey == "comment") {
-                                app.Comment = value
-                            } else if (lkey == "x-ubuntu-application-id") {
-                                app.Id = lvalue
-                            } else if (lkey == "x-ubuntu-touch" && lvalue == "true") {
-                                skip = false
-                            } else if (lkey == "nodisplay" && lvalue == "true") {
-                                nodisplay = true
-                            } else if (lkey == "onlyshowin") {
-                                onlyShowIn = lvalue
+                            desktopMap[lkey] = value
+                        }
+                    }
+
+                    if value, ok := desktopMap["name"]; ok {
+                        app.Title = value
+
+                        fullLang := os.Getenv("LANG")
+                        if (fullLang != "") {
+                            split := strings.Split(fullLang, ".")
+                            lang := strings.ToLower(split[0])
+
+                            split = strings.Split(lang, "_")
+                            shortLang := strings.ToLower(split[0])
+
+                            if title, ok := desktopMap[fmt.Sprintf("name[%s]", lang)]; ok {
+                                app.Title = title
+                            } else if title, ok := desktopMap[fmt.Sprintf("name[%s]", shortLang)]; ok {
+                                app.Title = title
                             }
                         }
+
+                        if domain, ok := desktopMap["x-ubuntu-gettext-domain"]; ok {
+                            gettext.BindTextdomain(domain, ".")
+                            gettext.Textdomain(domain)
+                            gettext.SetLocale(gettext.LC_ALL, "")
+
+                            translation := gettext.Gettext(value)
+                            if (translation != "") {
+                                app.Title = translation
+                            }
+                        }
+                    }
+
+                    if value, ok := desktopMap["icon"]; ok {
+                        if (value == "media-memory-sd") { //Special exception for the "External Drives" app
+                            app.Icon = "file:///usr/share/icons/Humanity/devices/48/media-memory-sd.svg"
+                        } else if (value != "" && value[0:1] == "/") {
+                            app.Icon = "file://" + value
+                        } else {
+                            app.Icon = "file:///usr/share/icons/suru/apps/128/placeholder-app-icon.png"
+                        }
+                    }
+
+                    if value, ok := desktopMap["comment"]; ok {
+                        app.Comment = value
+                    }
+
+                    if value, ok := desktopMap["x-ubuntu-application-id"]; ok {
+                        app.Id = strings.ToLower(value)
+                    }
+
+                    if value, ok := desktopMap["x-ubuntu-touch"]; (ok && strings.ToLower(value) == "true") {
+                        skip = false
+                    }
+
+                    if value, ok := desktopMap["nodisplay"]; (ok && strings.ToLower(value) == "true") {
+                        nodisplay = true
+                    }
+
+                    if value, ok := desktopMap["onlyshowin"]; ok {
+                        onlyShowIn = strings.ToLower(value)
                     }
 
                     //Currently the scopes have their data and icons stored under these path
