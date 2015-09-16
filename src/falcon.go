@@ -13,20 +13,25 @@ import (
 )
 
 const searchCategoryTemplate = ` {
-    "schema-version" : 1,
-    "template" : {
-        "category-layout" : "grid",
+    "schema-version": 1,
+    "template": {
+        "category-layout": "grid",
         "collapsed-rows": 0,
         "card-size": "small"
     },
     "components" : {
-        "title" : "title",
-        "art" : {
+        "title": "title",
+        "subtitle": "subtitle",
+        "art": {
             "field": "art",
             "aspect-ratio": 1.13
         }
     }
 }`
+
+type Settings struct {
+    Layout int64 `json:"layout"`
+}
 
 type ActionInfo struct {
 	Id    string `json:"id"`
@@ -42,6 +47,8 @@ type Application struct {
     Icon    string
     Uri     string
     Desktop string
+    IsApp   bool
+    Sort    string
 }
 
 type RemoteScope struct {
@@ -58,7 +65,7 @@ func (slice Applications) Len() int {
 }
 
 func (slice Applications) Less(a, b int) bool {
-    return slice[a].Title < slice[b].Title;
+    return slice[a].Sort < slice[b].Sort;
 }
 
 func (slice Applications) Swap(a, b int) {
@@ -95,7 +102,14 @@ func (s *Falcon) Preview(result *scopes.Result, metadata *scopes.ActionMetadata,
     return reply.PushWidgets(headerWidget, iconWidget, commentWidget, actionsWidget)
 }
 
+func (s *Falcon) firstChar(str string) string {
+    return string([]rune(str)[0])
+}
+
 func (s *Falcon) addApps(query string, reply *scopes.SearchReply) error {
+    var settings Settings
+    s.base.Settings(&settings)
+
     paths := []string{
         "/usr/share/applications/",
         "/home/phablet/.local/share/applications/",
@@ -106,7 +120,6 @@ func (s *Falcon) addApps(query string, reply *scopes.SearchReply) error {
     var clickstore Application
 
     var appList Applications
-    var scopeList Applications
     for index := range paths {
         path := paths[index]
         files, err := ioutil.ReadDir(path)
@@ -123,10 +136,10 @@ func (s *Falcon) addApps(query string, reply *scopes.SearchReply) error {
                     var app = Application{}
                     app.Desktop = string(content)
                     app.Uri = "application:///" + f.Name()
+                    app.IsApp = true
 
                     skip := true
                     nodisplay := false
-                    scope := false
                     onlyShowIn := "unity"
 
                     desktopMap := map[string] string{}
@@ -169,6 +182,8 @@ func (s *Falcon) addApps(query string, reply *scopes.SearchReply) error {
                                 app.Title = translation
                             }
                         }
+
+                        app.Sort = strings.ToLower(app.Title)
                     }
 
                     if value, ok := desktopMap["icon"]; ok {
@@ -212,7 +227,7 @@ func (s *Falcon) addApps(query string, reply *scopes.SearchReply) error {
 
                             nodisplay = false
                             skip = false
-                            scope = true
+                            app.IsApp = false
                         }
                     }
 
@@ -226,11 +241,7 @@ func (s *Falcon) addApps(query string, reply *scopes.SearchReply) error {
                         }
 
                         if (query == "" || strings.Index(strings.ToLower(app.Title), strings.ToLower(query)) >= 0) {
-                            if (scope) {
-                                scopeList = append(scopeList, app)
-                            } else {
-                                appList = append(appList, app)
-                            }
+                            appList = append(appList, app)
                         }
                     }
                 }
@@ -252,18 +263,45 @@ func (s *Falcon) addApps(query string, reply *scopes.SearchReply) error {
             var scope Application
             scope.Id = remoteScope.Id
             scope.Title = remoteScope.Name
+            scope.Sort = strings.ToLower(scope.Title)
             scope.Comment = remoteScope.Description
             scope.Icon = remoteScope.Icon
             scope.Uri = fmt.Sprintf("scope://%s", remoteScope.Id)
+            scope.IsApp = false
 
             if (query == "" || strings.Index(strings.ToLower(scope.Title), strings.ToLower(query)) >= 0) {
-                scopeList = append(scopeList, scope)
+                appList = append(appList, scope)
             }
         }
     }
 
-    appsCategory := reply.RegisterCategory("apps", "Apps", "", searchCategoryTemplate)
-    scopesCategory := reply.RegisterCategory("scopes", "Scopes", "", searchCategoryTemplate)
+    sort.Sort(appList)
+
+    categories := map[string] *scopes.Category{};
+    if (settings.Layout == 0) { //Group by apps & scopes
+        categories["apps"] = reply.RegisterCategory("apps", "Apps", "", searchCategoryTemplate)
+        categories["scopes"] = reply.RegisterCategory("scopes", "Scopes", "", searchCategoryTemplate)
+    } else { //Group by first letter
+        //TODO ignore A/An/The
+        //TODO group numbers
+
+        charMap := map[string] string{}
+        for index := range appList {
+            char := strings.ToUpper(s.firstChar(appList[index].Title))
+            charMap[char] = char
+        }
+
+        var charList []string
+        for index := range charMap {
+            charList = append(charList, index)
+        }
+
+        sort.Strings(charList)
+        for index := range charList {
+            char := charList[index]
+            categories[char] = reply.RegisterCategory(char, char, "", searchCategoryTemplate)
+        }
+    }
 
     searchTitle := "Search for more apps"
     if (query != "") {
@@ -271,13 +309,32 @@ func (s *Falcon) addApps(query string, reply *scopes.SearchReply) error {
     }
     storeCategory := reply.RegisterCategory("store", searchTitle, "", searchCategoryTemplate)
 
-    sort.Sort(appList)
-    sort.Sort(scopeList)
-
     for index := range appList {
         app := appList[index]
 
-        result := scopes.NewCategorisedResult(appsCategory)
+        //See note at next for loop
+        if (settings.Layout == 0 && !app.IsApp) {
+            continue
+        }
+
+        var result *scopes.CategorisedResult
+        if (settings.Layout == 0) {
+            if (app.IsApp) {
+                result = scopes.NewCategorisedResult(categories["apps"])
+            } else {
+                result = scopes.NewCategorisedResult(categories["scopes"])
+            }
+        } else {
+            char := strings.ToUpper(s.firstChar(app.Title))
+            result = scopes.NewCategorisedResult(categories[char])
+
+            if (app.IsApp) {
+                result.Set("subtitle", "App")
+            } else {
+                result.Set("subtitle", "Scope")
+            }
+        }
+
         result.SetURI(app.Uri)
         result.SetTitle(app.Title)
         result.SetArt(app.Icon)
@@ -289,18 +346,25 @@ func (s *Falcon) addApps(query string, reply *scopes.SearchReply) error {
         }
     }
 
-    for index := range scopeList {
-        scope := scopeList[index]
+    //TODO This is a really hacky looking way to make sure the apps go before the scopes, figure out a better way to do this
+    if (settings.Layout == 0) {
+        for index := range appList {
+            app := appList[index]
 
-        result := scopes.NewCategorisedResult(scopesCategory)
-        result.SetURI(scope.Uri)
-        result.SetTitle(scope.Title)
-        result.SetArt(scope.Icon)
-        result.Set("app", scope)
-        result.SetInterceptActivation()
+            if (app.IsApp) {
+                continue
+            }
 
-        if err := reply.Push(result); err != nil {
-            log.Fatalln(err)
+            result := scopes.NewCategorisedResult(categories["scopes"])
+            result.SetURI(app.Uri)
+            result.SetTitle(app.Title)
+            result.SetArt(app.Icon)
+            result.Set("app", app)
+            result.SetInterceptActivation()
+
+            if err := reply.Push(result); err != nil {
+                log.Fatalln(err)
+            }
         }
     }
 

@@ -6,7 +6,7 @@ var sdk = 'ubuntu-sdk-15.04';
 var paths = {
     src: {
         click: ['click/manifest.json', 'click/falcon.apparmor'],
-        scope: ['images/icon.png', 'images/logo.png', 'src/falcon.bhdouglass_falcon.ini'],
+        scope: ['images/icon.png', 'images/logo.png', 'src/falcon.bhdouglass_falcon.ini', 'src/falcon.bhdouglass_falcon-settings.ini'],
         go: 'src/falcon.go',
     },
     dist: {
