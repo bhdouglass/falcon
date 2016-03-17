@@ -1,13 +1,15 @@
 var gulp = require('gulp');
 var shell = require('gulp-shell');
 var del = require('del');
+var fs = require('fs');
+var path = require('path');
 
 var sdk = 'ubuntu-sdk-15.04';
 var paths = {
     src: {
         click: ['click/manifest.json', 'click/falcon.apparmor'],
         scope: ['images/icon.png', 'images/logo.png', 'src/falcon.bhdouglass_falcon.ini', 'src/falcon.bhdouglass_falcon-settings.ini'],
-        go: 'src/falcon.go',
+        go: 'src/*.go',
     },
     dist: {
         click: 'dist',
@@ -52,4 +54,25 @@ gulp.task('default', ['run']);
 
 gulp.task('build-chroot', shell.task('sudo click chroot -a armhf -f ' + sdk + ' run gulp build-go-armhf'));
 
-gulp.task('build-click', ['build-chroot'], shell.task('click build dist'));
+gulp.task('build-click', ['build-chroot'], shell.task('cd dist && click build .'));
+
+function findClick() {
+    var click = null;
+
+    var dir = fs.readdirSync('./dist');
+    dir.forEach(function(file) {
+        if (path.extname(file) == '.click') {
+            click = file;
+        }
+    });
+
+    return click;
+}
+
+gulp.task('push-click', ['build-click'], shell.task(
+    'adb push dist/' + findClick() + ' /home/phablet/')
+);
+
+gulp.task('install-click', ['push-click'], shell.task(
+    'echo "pkcon install-local --allow-untrusted ./' + findClick() + '" | phablet-shell'
+));
