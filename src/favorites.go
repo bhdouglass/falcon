@@ -28,14 +28,14 @@ func (falcon *Falcon) unfavorite(appId string) {
 func (falcon *Falcon) saveFavorites() {
     data := []byte(strings.Join(falcon.favorites, "\n"))
     if err := ioutil.WriteFile(falcon.favFile, data, 0777); err != nil {
-        log.Fatalln(err)
+        log.Println(err)
     }
 }
 
 func (falcon *Falcon) loadFavorites() {
     content, err := ioutil.ReadFile(falcon.favFile)
     if err != nil {
-        log.Fatalln(err)
+        log.Println(err)
     } else {
         falcon.favorites = strings.Split(string(content), "\n")
     }
