@@ -3,8 +3,29 @@ package main
 import (
     "io/ioutil"
     "log"
+    "regexp"
     "strings"
 )
+
+func (falcon *Falcon) extractId(id string) string {
+    id = strings.ToLower(id)
+
+    if id != "" {
+        pos := strings.LastIndex(id, "_")
+
+        if pos >= 0 {
+            if r, err := regexp.Compile(`[\d\.]*`); err == nil {
+                if r.MatchString(id[(pos + 1):len(id)]) {
+                    id = id[0:pos]
+                }
+            } else {
+                log.Println(err)
+            }
+        }
+    }
+
+    return id
+}
 
 func (falcon *Falcon) favorite(appId string) {
     falcon.favorites = append(falcon.favorites, appId)
@@ -38,6 +59,10 @@ func (falcon *Falcon) loadFavorites() {
         log.Println(err)
     } else {
         falcon.favorites = strings.Split(string(content), "\n")
+
+        for i := 0; i < len(falcon.favorites); i++ {
+            falcon.favorites[i] = falcon.extractId(falcon.favorites[i])
+        }
     }
 }
 

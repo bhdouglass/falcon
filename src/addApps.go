@@ -128,7 +128,9 @@ func (falcon *Falcon) addApps(query string, reply *scopes.SearchReply) error {
                     }
 
                     if value, ok := desktopMap["x-ubuntu-application-id"]; ok {
-                        app.Id = strings.ToLower(value)
+                        app.Id = falcon.extractId(value)
+                    } else {
+                        app.Id = falcon.extractId(strings.Replace(f.Name(), ".desktop", "", 1))
                     }
 
                     if value, ok := desktopMap["x-ubuntu-touch"]; (ok && strings.ToLower(value) == "true") {
