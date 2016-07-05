@@ -33,7 +33,42 @@ func (falcon *Falcon) firstChar(str string) string {
     return string([]rune(str)[0])
 }
 
-func (falcon *Falcon) addApps(query string, reply *scopes.SearchReply) error {
+func (falcon *Falcon) appPreview(result *scopes.Result, metadata *scopes.ActionMetadata, reply *scopes.PreviewReply) error {
+    var app Application
+    if err := result.Get("app", &app); err != nil {
+        log.Println(err)
+    }
+
+    headerWidget := scopes.NewPreviewWidget("header", "header")
+    headerWidget.AddAttributeValue("title", app.Title)
+
+    iconWidget := scopes.NewPreviewWidget("art", "image")
+    iconWidget.AddAttributeValue("source", app.Icon)
+
+    commentWidget := scopes.NewPreviewWidget("content", "text")
+    commentWidget.AddAttributeValue("text", app.Comment)
+
+    var buttons []ActionInfo
+    buttons = append(buttons, ActionInfo{Id: "launch", Label: "Launch"})
+
+    if falcon.isFavorite(app.Id) {
+        buttons = append(buttons, ActionInfo{Id: "unfavorite", Label: "Unfavorite"})
+    } else {
+        buttons = append(buttons, ActionInfo{Id: "favorite", Label: "Favorite"})
+    }
+
+    actionsWidget := scopes.NewPreviewWidget("actions", "actions")
+    actionsWidget.AddAttributeValue("actions", buttons)
+
+    messageWidget := scopes.NewPreviewWidget("message", "text")
+    if falcon.isFavorite(app.Id) {
+        messageWidget.AddAttributeValue("text", "Refresh scope to see changes")
+    }
+
+    return reply.PushWidgets(headerWidget, iconWidget, commentWidget, actionsWidget, messageWidget)
+}
+
+func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
     var settings Settings
     falcon.base.Settings(&settings)
 
@@ -162,6 +197,14 @@ func (falcon *Falcon) addApps(query string, reply *scopes.SearchReply) error {
                         }
                     }
 
+                    //TODO create a database of these values rather than checking the file system
+                    //TODO download tar.gz from a website
+                    //TODO add a result to view and toggle between packs
+                    iconFile := falcon.base.ScopeDirectory() + "/" + app.Id + ".svg"
+                    if _, err := os.Stat(iconFile); err == nil {
+                        app.Icon = iconFile
+                    }
+
                     if (!skip && !nodisplay && onlyShowIn == "unity") {
                         if (strings.Contains(app.Id, "uappexplorer.bhdouglass")) {
                             uappexplorer = app
@@ -253,6 +296,7 @@ func (falcon *Falcon) addApps(query string, reply *scopes.SearchReply) error {
             result.SetTitle(app.Title)
             result.SetArt(app.Icon)
             result.Set("app", app)
+            result.Set("type", "app")
             result.SetInterceptActivation()
 
             if err := reply.Push(result); err != nil {
@@ -291,6 +335,7 @@ func (falcon *Falcon) addApps(query string, reply *scopes.SearchReply) error {
         result.SetTitle(app.Title)
         result.SetArt(app.Icon)
         result.Set("app", app)
+        result.Set("type", "app")
         result.SetInterceptActivation()
 
         if err := reply.Push(result); err != nil {
@@ -312,6 +357,7 @@ func (falcon *Falcon) addApps(query string, reply *scopes.SearchReply) error {
             result.SetTitle(app.Title)
             result.SetArt(app.Icon)
             result.Set("app", app)
+            result.Set("type", "app")
             result.SetInterceptActivation()
 
             if err := reply.Push(result); err != nil {
@@ -349,6 +395,7 @@ func (falcon *Falcon) addApps(query string, reply *scopes.SearchReply) error {
         result.SetTitle(store.Title)
         result.SetArt(store.Icon)
         result.Set("app", store)
+        result.Set("type", "app")
         result.SetInterceptActivation()
 
         if err := reply.Push(result); err != nil {
@@ -357,4 +404,55 @@ func (falcon *Falcon) addApps(query string, reply *scopes.SearchReply) error {
     }
 
     return nil
+}
+
+func (falcon *Falcon) appPerformAction(result *scopes.Result, metadata *scopes.ActionMetadata, widgetId, actionId string) *scopes.ActivationResponse {
+    var resp *scopes.ActivationResponse
+
+    var app Application
+    if err := result.Get("app", &app); err != nil {
+        log.Println(err)
+    }
+
+    if actionId == "favorite" {
+        if app.Id != "" {
+            falcon.favorite(app.Id)
+        }
+
+        resp = scopes.NewActivationResponse(scopes.ActivationShowPreview)
+    } else if actionId == "unfavorite" {
+        if app.Id != "" {
+            falcon.unfavorite(app.Id)
+        }
+
+        resp = scopes.NewActivationResponse(scopes.ActivationShowPreview)
+    } else { //action is launch
+        if app.IsApp {
+            resp = scopes.NewActivationResponse(scopes.ActivationNotHandled)
+        } else {
+            query := scopes.NewCannedQuery(app.Id, "", "")
+            resp = scopes.NewActivationResponseForQuery(query)
+        }
+    }
+
+    return resp
+}
+
+func (falcon *Falcon) appActivate(result *scopes.Result, metadata *scopes.ActionMetadata) *scopes.ActivationResponse {
+    var resp *scopes.ActivationResponse
+    var app Application
+    if err := result.Get("app", &app); err != nil {
+        log.Println(err)
+    }
+
+    if app.IsApp {
+        //Let the uri handler open the app
+        resp = scopes.NewActivationResponse(scopes.ActivationNotHandled)
+    } else {
+        //Do a canned query so the scopes can be previewed
+        query := scopes.NewCannedQuery(app.Id, "", "")
+        resp = scopes.NewActivationResponseForQuery(query)
+    }
+
+    return resp
 }

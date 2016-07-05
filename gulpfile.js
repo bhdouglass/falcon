@@ -13,6 +13,7 @@ var paths = {
             'images/logo.png',
             'src/falcon.bhdouglass_falcon.ini',
             'src/falcon.bhdouglass_falcon-settings.ini',
+            'images/icons/*.svg',
         ],
         go: 'src/*.go',
     },
@@ -61,6 +62,7 @@ gulp.task('build-chroot', shell.task('sudo click chroot -a armhf -f ' + sdk + ' 
 
 gulp.task('build-click', ['build-chroot'], shell.task('cd dist && click build .'));
 
+//TODO call this after the click has been built so we can actually find it
 function findClick() {
     var click = null;
 
