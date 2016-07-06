@@ -197,12 +197,11 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
                         }
                     }
 
-                    //TODO create a database of these values rather than checking the file system
-                    //TODO download tar.gz from a website
-                    //TODO add a result to view and toggle between packs
-                    iconFile := falcon.base.ScopeDirectory() + "/" + app.Id + ".svg"
-                    if _, err := os.Stat(iconFile); err == nil {
-                        app.Icon = iconFile
+                    if icon, ok := falcon.iconPackMap[app.Id]; ok {
+                        iconFile := falcon.iconPack + icon.(string)
+                        if _, err := os.Stat(iconFile); err == nil {
+                            app.Icon = iconFile
+                        }
                     }
 
                     if (!skip && !nodisplay && onlyShowIn == "unity") {
@@ -373,7 +372,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
         store = uappexplorerScope
 
         if (query != "") {
-            store.Uri = fmt.Sprintf("%s?q=%s", store.Uri, query)
+            store.Uri = fmt.Sprintf("scope://%s?q=%s", store.Id, query)
         }
     } else if (uappexplorer.Id != "") {
         store = uappexplorer
@@ -385,7 +384,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
         store = clickstore
 
         if (query != "") {
-            store.Uri = fmt.Sprintf("%s?q=%s", store.Uri, query)
+            store.Uri = fmt.Sprintf("scope://%s?q=%s", store.Id, query)
         }
     }
 
@@ -401,6 +400,21 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
         if err := reply.Push(result); err != nil {
             log.Fatalln(err)
         }
+    }
+
+    //Icon pack result
+    iconPackCategory := reply.RegisterCategory("icon-packs", "Icon Packs", "", searchCategoryTemplate)
+
+    result := scopes.NewCategorisedResult(iconPackCategory)
+    result.SetURI("scope://falcon.bhdouglass_falcon?q=icon-packs")
+    result.SetTitle("Find Icon Packs")
+    //TODO find icon
+    //result.SetArt(store.Icon)
+    result.Set("type", "icon-packs")
+    result.SetInterceptActivation()
+
+    if err := reply.Push(result); err != nil {
+        log.Fatalln(err)
     }
 
     return nil

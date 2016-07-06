@@ -4,10 +4,16 @@ import (
     "fmt"
     "launchpad.net/go-unityscopes/v2"
     "log"
+    "strings"
 )
 
 type Falcon struct {
     base *scopes.ScopeBase
+
+    iconPack string
+    iconPackFile string
+    iconPackMap map[string]interface{}
+
     favFile string
     favorites []string
 }
@@ -21,6 +27,8 @@ func (falcon *Falcon) Preview(result *scopes.Result, metadata *scopes.ActionMeta
     var err error
     if typ == "app" {
         err = falcon.appPreview(result, metadata, reply)
+    } else if typ == "icon-pack" {
+        err = falcon.iconPackPreview(result, metadata, reply)
     } else {
         log.Fatalln("unknown result type")
     }
@@ -32,16 +40,29 @@ func (falcon *Falcon) Search(query *scopes.CannedQuery, metadata *scopes.SearchM
     q := query.QueryString()
     log.Println(fmt.Sprintf("query: %s", q))
 
-    if err := falcon.appSearch(q, reply); err != nil {
-        log.Fatalln(err)
+    if q == "icon-packs" {
+        //TODO support searching within the icon packs
+        if err := falcon.iconPackSearch(q, reply); err != nil {
+            log.Fatalln(err)
+        }
+    } else {
+        if err := falcon.appSearch(q, reply); err != nil {
+            log.Fatalln(err)
+        }
     }
 
     return nil
 }
 
 func (falcon *Falcon) PerformAction(result *scopes.Result, metadata *scopes.ActionMetadata, widgetId, actionId string) (*scopes.ActivationResponse, error) {
-    log.Println(actionId)
-    return falcon.appPerformAction(result, metadata, widgetId, actionId), nil
+    var resp *scopes.ActivationResponse
+    if strings.Contains(actionId, "icon-pack:") {
+        resp = falcon.iconPackPerformAction(result, metadata, widgetId, actionId)
+    } else {
+        resp = falcon.appPerformAction(result, metadata, widgetId, actionId)
+    }
+
+    return resp, nil
 }
 
 func (falcon *Falcon) Activate(result *scopes.Result, metadata *scopes.ActionMetadata) (*scopes.ActivationResponse, error) {
@@ -67,10 +88,15 @@ func (falcon *Falcon) SetScopeBase(base *scopes.ScopeBase) {
         falcon.favFile = fmt.Sprintf("%s/favorites.txt", falcon.base.CacheDirectory())
         falcon.loadFavorites()
     }
+
+    if falcon.iconPackFile == "" {
+        falcon.iconPackFile = fmt.Sprintf("%s/iconPack.txt", falcon.base.CacheDirectory())
+        falcon.loadIconPack()
+    }
 }
 
 func main() {
-    log.Println("falcon launching")
+    log.Println("launching falcon")
 
     scope := &Falcon{}
     if err := scopes.Run(scope); err != nil {
