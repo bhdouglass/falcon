@@ -13,6 +13,7 @@ var paths = {
             'images/logo.png',
             'src/falcon.bhdouglass_falcon.ini',
             'src/falcon.bhdouglass_falcon-settings.ini',
+            'images/*.svg',
         ],
         go: 'src/*.go',
     },

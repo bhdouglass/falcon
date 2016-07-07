@@ -29,6 +29,8 @@ func (falcon *Falcon) Preview(result *scopes.Result, metadata *scopes.ActionMeta
         err = falcon.appPreview(result, metadata, reply)
     } else if typ == "icon-pack" {
         err = falcon.iconPackPreview(result, metadata, reply)
+    } else if typ == "icon-pack-utility" {
+        err = falcon.iconPackUtilityPreview(result, metadata, reply)
     } else {
         log.Fatalln("unknown result type")
     }
@@ -74,6 +76,8 @@ func (falcon *Falcon) Activate(result *scopes.Result, metadata *scopes.ActionMet
     var resp *scopes.ActivationResponse
     if typ == "app" {
         resp = falcon.appActivate(result, metadata)
+    } else if typ == "icon-pack-utility" {
+        resp = falcon.iconPackActivate(result, metadata)
     } else {
         resp = scopes.NewActivationResponse(scopes.ActivationNotHandled)
     }

@@ -68,6 +68,7 @@ func (falcon *Falcon) loadFavorites() {
 
 func (falcon *Falcon) isFavorite(appId string) bool {
     var isFav bool = false
+    appId = falcon.extractId(appId)
 
     for _, id := range falcon.favorites {
         if id == appId {

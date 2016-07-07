@@ -34,6 +34,9 @@ func (falcon *Falcon) firstChar(str string) string {
 }
 
 func (falcon *Falcon) appPreview(result *scopes.Result, metadata *scopes.ActionMetadata, reply *scopes.PreviewReply) error {
+    var settings Settings
+    falcon.base.Settings(&settings)
+
     var app Application
     if err := result.Get("app", &app); err != nil {
         log.Println(err)
@@ -48,6 +51,11 @@ func (falcon *Falcon) appPreview(result *scopes.Result, metadata *scopes.ActionM
     commentWidget := scopes.NewPreviewWidget("content", "text")
     commentWidget.AddAttributeValue("text", app.Comment)
 
+    idWidget := scopes.NewPreviewWidget("id", "text")
+    if settings.Ids {
+        idWidget.AddAttributeValue("text", app.Id)
+    }
+
     var buttons []ActionInfo
     buttons = append(buttons, ActionInfo{Id: "launch", Label: "Launch"})
 
@@ -60,12 +68,7 @@ func (falcon *Falcon) appPreview(result *scopes.Result, metadata *scopes.ActionM
     actionsWidget := scopes.NewPreviewWidget("actions", "actions")
     actionsWidget.AddAttributeValue("actions", buttons)
 
-    messageWidget := scopes.NewPreviewWidget("message", "text")
-    if falcon.isFavorite(app.Id) {
-        messageWidget.AddAttributeValue("text", "Refresh scope to see changes")
-    }
-
-    return reply.PushWidgets(headerWidget, iconWidget, commentWidget, actionsWidget, messageWidget)
+    return reply.PushWidgets(headerWidget, iconWidget, commentWidget, idWidget, actionsWidget)
 }
 
 func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
@@ -408,8 +411,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
     result := scopes.NewCategorisedResult(iconPackCategory)
     result.SetURI("scope://falcon.bhdouglass_falcon?q=icon-packs")
     result.SetTitle("Find Icon Packs")
-    //TODO find icon
-    //result.SetArt(store.Icon)
+    result.SetArt(falcon.base.ScopeDirectory() + "/icon-packs.svg")
     result.Set("type", "icon-packs")
     result.SetInterceptActivation()
 
@@ -433,13 +435,17 @@ func (falcon *Falcon) appPerformAction(result *scopes.Result, metadata *scopes.A
             falcon.favorite(app.Id)
         }
 
-        resp = scopes.NewActivationResponse(scopes.ActivationShowPreview)
+        //redirect to blank search
+        query := scopes.NewCannedQuery("falcon.bhdouglass_falcon", "", "")
+        resp = scopes.NewActivationResponseForQuery(query)
     } else if actionId == "unfavorite" {
         if app.Id != "" {
             falcon.unfavorite(app.Id)
         }
 
-        resp = scopes.NewActivationResponse(scopes.ActivationShowPreview)
+        //redirect to blank search
+        query := scopes.NewCannedQuery("falcon.bhdouglass_falcon", "", "")
+        resp = scopes.NewActivationResponseForQuery(query)
     } else { //action is launch
         if app.IsApp {
             resp = scopes.NewActivationResponse(scopes.ActivationNotHandled)

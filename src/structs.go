@@ -2,6 +2,7 @@ package main
 
 type Settings struct {
     Layout int64 `json:"layout"`
+    Ids    bool  `json:"ids"`
 }
 
 type ActionInfo struct {

@@ -31,6 +31,36 @@ const iconPackCategoryTemplate = `{
     }
 }`
 
+func (falcon *Falcon) iconPackUtilityPreview(result *scopes.Result, metadata *scopes.ActionMetadata, reply *scopes.PreviewReply) error {
+    if result.URI() == "reset" {
+        titleWidget := scopes.NewPreviewWidget("title", "header")
+        titleWidget.AddAttributeValue("title", "Remove current icon pack")
+        titleWidget.AddAttributeValue("subtitle", "Revert back to the default icons")
+
+        var buttons []ActionInfo
+        buttons = append(buttons, ActionInfo{Id: "icon-pack:reset", Label: "Revert"})
+
+        actionsWidget := scopes.NewPreviewWidget("actions", "actions")
+        actionsWidget.AddAttributeValue("actions", buttons)
+
+        return reply.PushWidgets(titleWidget, actionsWidget)
+    } else {
+        titleWidget := scopes.NewPreviewWidget("title", "header")
+        titleWidget.AddAttributeValue("title", "Submit an icon pack")
+        titleWidget.AddAttributeValue("subtitle", "Contact the author to submit a new icon pack")
+
+        var buttons []ActionInfo
+        buttons = append(buttons, ActionInfo{Id: "icon-pack:contact", Uri: result.URI(), Label: "Contact the author"})
+
+        actionsWidget := scopes.NewPreviewWidget("actions", "actions")
+        actionsWidget.AddAttributeValue("actions", buttons)
+
+        return reply.PushWidgets(titleWidget, actionsWidget)
+    }
+
+    return nil
+}
+
 func (falcon *Falcon) iconPackPreview(result *scopes.Result, metadata *scopes.ActionMetadata, reply *scopes.PreviewReply) error {
     var iconPack IconPack
     if err := result.Get("iconPack", &iconPack); err != nil {
@@ -74,9 +104,13 @@ func (falcon *Falcon) iconPackPreview(result *scopes.Result, metadata *scopes.Ac
         }
     }
 
-    //TODO hide if it's the active icon pack
     var buttons []ActionInfo
-    buttons = append(buttons, ActionInfo{Id: "icon-pack:install", Label: "Install"})
+
+    if falcon.iconPackDir(iconPack.Title) == falcon.iconPack {
+        buttons = append(buttons, ActionInfo{Id: "icon-pack:install", Label: "Reinstall"})
+    } else {
+        buttons = append(buttons, ActionInfo{Id: "icon-pack:install", Label: "Install"})
+    }
 
     actionsWidget := scopes.NewPreviewWidget("actions", "actions")
     actionsWidget.AddAttributeValue("actions", buttons)
@@ -116,10 +150,49 @@ func (falcon *Falcon) iconPackSearch(query string, reply *scopes.SearchReply) er
         }
     }
 
-    //TODO conact me button (for icon pack submissions)
-    //TODO unset icon pack button
+    utilitiesCategory := reply.RegisterCategory("icon-packs-utils", "Utilities", "", searchCategoryTemplate)
+
+    contactResult := scopes.NewCategorisedResult(utilitiesCategory)
+    contactResult.SetURI("http://bhdouglass.com/contact.html")
+    contactResult.SetTitle("Submit an icon pack")
+    contactResult.SetArt(falcon.base.ScopeDirectory() + "/contact.svg")
+    contactResult.Set("type", "icon-pack-utility")
+    contactResult.SetInterceptActivation()
+
+    if err := reply.Push(contactResult); err != nil {
+        log.Fatalln(err)
+    }
+
+    if falcon.iconPack != "" {
+        resetResult := scopes.NewCategorisedResult(utilitiesCategory)
+        resetResult.SetURI("reset")
+        resetResult.SetTitle("Remove current icon pack")
+        resetResult.SetArt(falcon.base.ScopeDirectory() + "/reset.svg")
+        resetResult.Set("type", "icon-pack-utility")
+        resetResult.SetInterceptActivation() //TODO preview
+
+        if err := reply.Push(resetResult); err != nil {
+            log.Fatalln(err)
+        }
+    }
 
     return nil
+}
+
+func (falcon *Falcon) iconPackActivate(result *scopes.Result, metadata *scopes.ActionMetadata) *scopes.ActivationResponse {
+    var resp *scopes.ActivationResponse
+
+    if result.URI() == "reset" {
+        falcon.saveIconPack("")
+
+        //redirect to blank search
+        query := scopes.NewCannedQuery("falcon.bhdouglass_falcon", "", "")
+        resp = scopes.NewActivationResponseForQuery(query)
+    } else {
+        resp = scopes.NewActivationResponse(scopes.ActivationNotHandled)
+    }
+
+    return resp
 }
 
 func (falcon *Falcon) iconPackDownload(title string, url string) string {
@@ -145,11 +218,16 @@ func (falcon *Falcon) iconPackDownload(title string, url string) string {
     return filename
 }
 
-//Based off code from https://socketloop.com/tutorials/golang-untar-or-extract-tar-ball-archive-example
-func (falcon *Falcon) iconPackUntar(title string, filename string) string {
+func (falcon *Falcon) iconPackDir(title string) string {
     dir := strings.ToLower(strings.Replace(title, " ", "-", -1))
     dir = fmt.Sprintf("%s/%s/", falcon.base.CacheDirectory(), dir)
-    log.Println(dir)
+
+    return dir
+}
+
+//Based off code from https://socketloop.com/tutorials/golang-untar-or-extract-tar-ball-archive-example
+func (falcon *Falcon) iconPackUntar(title string, filename string) string {
+    dir := falcon.iconPackDir(title)
 
     if err := os.MkdirAll(dir, os.FileMode(0755)); err != nil {
         log.Fatalln(err)
@@ -214,15 +292,21 @@ func (falcon *Falcon) iconPackUntar(title string, filename string) string {
 func (falcon *Falcon) iconPackPerformAction(result *scopes.Result, metadata *scopes.ActionMetadata, widgetId, actionId string) *scopes.ActivationResponse {
     var resp *scopes.ActivationResponse
 
-    var iconPack IconPack
-    if err := result.Get("iconPack", &iconPack); err != nil {
-        log.Println(err)
-    }
-
     if actionId == "icon-pack:install" {
+        var iconPack IconPack
+        if err := result.Get("iconPack", &iconPack); err != nil {
+            log.Println(err)
+        }
+
         filename := falcon.iconPackDownload(iconPack.Title, iconPack.Archive)
         dir := falcon.iconPackUntar(iconPack.Title, filename)
         falcon.saveIconPack(dir)
+
+        //redirect to blank search
+        query := scopes.NewCannedQuery("falcon.bhdouglass_falcon", "", "")
+        resp = scopes.NewActivationResponseForQuery(query)
+    } else if actionId == "icon-pack:reset" {
+        falcon.saveIconPack("")
 
         //redirect to blank search
         query := scopes.NewCannedQuery("falcon.bhdouglass_falcon", "", "")
@@ -235,10 +319,28 @@ func (falcon *Falcon) iconPackPerformAction(result *scopes.Result, metadata *sco
 }
 
 func (falcon *Falcon) saveIconPack(dir string) {
-    falcon.iconPack = dir
+    if falcon.iconPack != dir {
+        falcon.iconPack = dir
 
-    data := []byte(falcon.iconPack)
-    if err := ioutil.WriteFile(falcon.iconPackFile, data, 0777); err != nil {
+        data := []byte(falcon.iconPack)
+        if err := ioutil.WriteFile(falcon.iconPackFile, data, 0777); err != nil {
+            log.Println(err)
+        }
+
+        falcon.refreshIconPack()
+    }
+}
+
+func (falcon *Falcon) refreshIconPack() {
+    content, err := ioutil.ReadFile(falcon.iconPack + "icon-pack.json")
+    if err == nil {
+        var i interface{}
+        if err := json.Unmarshal(content, &i); err != nil {
+            log.Println(err)
+        }
+
+        falcon.iconPackMap = i.(map[string]interface{})
+    } else {
         log.Println(err)
     }
 }
@@ -250,17 +352,6 @@ func (falcon *Falcon) loadIconPack() {
     } else {
         falcon.iconPack = string(content)
 
-        content, err := ioutil.ReadFile(falcon.iconPack + "icon-pack.json")
-        if err == nil {
-            var i interface{}
-            if err := json.Unmarshal(content, &i); err != nil {
-                log.Println(err)
-            }
-
-            falcon.iconPackMap = i.(map[string]interface{})
-        } else {
-            log.Println(err)
-        }
-
+        falcon.refreshIconPack()
     }
 }
