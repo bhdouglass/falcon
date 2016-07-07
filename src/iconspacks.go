@@ -169,7 +169,7 @@ func (falcon *Falcon) iconPackSearch(query string, reply *scopes.SearchReply) er
         resetResult.SetTitle("Remove current icon pack")
         resetResult.SetArt(falcon.base.ScopeDirectory() + "/reset.svg")
         resetResult.Set("type", "icon-pack-utility")
-        resetResult.SetInterceptActivation() //TODO preview
+        resetResult.SetInterceptActivation()
 
         if err := reply.Push(resetResult); err != nil {
             log.Fatalln(err)
