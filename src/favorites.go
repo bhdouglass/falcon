@@ -28,7 +28,7 @@ func (falcon *Falcon) extractId(id string) string {
 }
 
 func (falcon *Falcon) favorite(appId string) {
-    falcon.favorites = append(falcon.favorites, appId)
+    falcon.favorites = append(falcon.favorites, falcon.extractId(appId))
 
     falcon.saveFavorites()
 }
@@ -37,7 +37,7 @@ func (falcon *Falcon) unfavorite(appId string) {
     var newFavorites []string
 
     for _, id := range falcon.favorites {
-        if id != appId {
+        if falcon.extractId(id) != falcon.extractId(appId) {
             newFavorites = append(newFavorites, id)
         }
     }
