@@ -14,7 +14,7 @@ func (falcon *Falcon) extractId(id string) string {
         pos := strings.LastIndex(id, "_")
 
         if pos >= 0 {
-            if r, err := regexp.Compile(`[\d\.]*`); err == nil {
+            if r, err := regexp.Compile(`^[\d\.]*$`); err == nil {
                 if r.MatchString(id[(pos + 1):len(id)]) {
                     id = id[0:pos]
                 }
