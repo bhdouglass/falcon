@@ -245,6 +245,13 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
             scope.Uri = fmt.Sprintf("scope://%s", remoteScope.Id)
             scope.IsApp = false
 
+            if icon, ok := falcon.iconPackMap[scope.Id]; ok {
+                iconFile := falcon.iconPack + icon.(string)
+                if _, err := os.Stat(iconFile); err == nil {
+                    scope.Icon = iconFile
+                }
+            }
+
             if (query == "" || strings.Index(strings.ToLower(scope.Title), strings.ToLower(query)) >= 0) {
                 appList = append(appList, scope)
             }
