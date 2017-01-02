@@ -1,6 +1,8 @@
-# Falcon App/Scope Launcher
+# Falcon Scope
 
-An alternative Ubuntu Touch app & scope launcher
+An alternative Ubuntu Touch app & scope launcher.
+
+Get it in the [OpenStore](https://open.uappexplorer.com/app/falcon.bhdouglass).
 
 ## What's with the name?
 

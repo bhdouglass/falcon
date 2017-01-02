@@ -1,7 +1,9 @@
 {
+    "name": "falcon.bhdouglass",
+    "title": "Falcon",
+    "description": "Falcon Scope",
     "architecture": "armhf",
-    "description": "Falcon App Launcher",
-    "framework": "ubuntu-sdk-15.04.4",
+    "framework": "ubuntu-sdk-15.04.6",
     "hooks": {
         "falcon": {
             "apparmor": "falcon.apparmor",
@@ -9,7 +11,5 @@
         }
     },
     "maintainer": "Brian Douglass <bhdouglass@gmail.com>",
-    "name": "falcon.bhdouglass",
-    "title": "Falcon",
-    "version": "1.43"
+    "version": "1.44"
 }

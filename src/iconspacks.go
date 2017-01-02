@@ -120,7 +120,7 @@ func (falcon *Falcon) iconPackPreview(result *scopes.Result, metadata *scopes.Ac
 
 func (falcon *Falcon) iconPackSearch(query string, reply *scopes.SearchReply) error {
     //TODO see about finding a better home for this
-    resp, err := http.Get("https://dl.dropboxusercontent.com/u/2138439/falcon/icon-packs.json")
+    resp, err := http.Get("https://falcon.bhdouglass.com/icon-packs.json")
     if err != nil {
         return err
     }
