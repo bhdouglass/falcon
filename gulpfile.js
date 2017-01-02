@@ -58,7 +58,7 @@ gulp.task('run', ['build-go'], shell.task(
 
 gulp.task('default', ['run']);
 
-gulp.task('build-chroot', shell.task('sudo click chroot -a armhf -f ' + sdk + ' run gulp build-go-armhf'));
+gulp.task('build-chroot', shell.task('click chroot -a armhf -f ' + sdk + ' run gulp build-go-armhf'));
 
 gulp.task('build-click', ['build-chroot'], shell.task('cd dist && click build .'));
 
