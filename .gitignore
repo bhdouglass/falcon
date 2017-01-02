@@ -26,3 +26,4 @@ _testmain.go
 dist
 *.click
 node_modules/
+build
