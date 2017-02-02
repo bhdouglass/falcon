@@ -420,7 +420,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
         if (settings.Layout == 0) {
             if (app.IsApp) {
                 result = scopes.NewCategorisedResult(categories["apps"])
-            } else {
+            } else if (settings.ShowScopes) {
                 result = scopes.NewCategorisedResult(categories["scopes"])
             }
         } else {
@@ -473,7 +473,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
 
     //Scopes last
     //TODO This is a really hacky looking way to make sure the apps go before the scopes, figure out a better way to do this
-    if (settings.Layout == 0) {
+    if (settings.Layout == 0 && settings.ShowScopes) {
         for index := range appList {
             app := appList[index]
 

@@ -8,6 +8,7 @@ type Settings struct {
     FavoritesSize   int64 `json:"favorites_size"`
     AppScopeLayout  int64 `json:"app_scope_layout"`
     AppScopeSize    int64 `json:"app_scope_size"`
+    ShowScopes      bool  `json:"show_scopes"`
 }
 
 type ActionInfo struct {
