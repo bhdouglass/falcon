@@ -1,5 +1,8 @@
 #!/bin/bash
 
+set -e
+set -x
+
 echo "Compiling scope"
 
 mkdir -p ./tmp

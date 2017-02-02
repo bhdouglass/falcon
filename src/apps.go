@@ -8,6 +8,7 @@ import (
     "launchpad.net/go-unityscopes/v2"
     "log"
     "os"
+    "os/exec"
     "sort"
     "strings"
 )
@@ -71,6 +72,110 @@ func (falcon *Falcon) appPreview(result *scopes.Result, metadata *scopes.ActionM
     return reply.PushWidgets(headerWidget, iconWidget, commentWidget, idWidget, actionsWidget)
 }
 
+func (falcon *Falcon) getRemoteScopes(query string) Applications {
+    var appList Applications
+
+    file, err := ioutil.ReadFile("/home/phablet/.cache/unity-scopes/remote-scopes.json")
+    if err != nil {
+        log.Println(err)
+    } else {
+        var remoteScopes []RemoteScope
+        json.Unmarshal(file, &remoteScopes)
+
+        for index := range remoteScopes {
+            remoteScope := remoteScopes[index]
+
+            var scope Application
+            scope.Id = remoteScope.Id
+            scope.Title = remoteScope.Name
+            scope.Sort = strings.ToLower(scope.Title)
+            scope.Comment = remoteScope.Description
+            scope.Icon = remoteScope.Icon
+            scope.Uri = fmt.Sprintf("scope://%s", remoteScope.Id)
+            scope.IsApp = false
+            scope.IsDesktop = false
+
+            if icon, ok := falcon.iconPackMap[scope.Id]; ok {
+                iconFile := falcon.iconPack + icon.(string)
+                if _, err := os.Stat(iconFile); err == nil {
+                    scope.Icon = iconFile
+                }
+            }
+
+            if (query == "" || strings.Index(strings.ToLower(scope.Title), strings.ToLower(query)) >= 0) {
+                appList = append(appList, scope)
+            }
+        }
+    }
+
+    return appList
+}
+
+//TODO cache this data
+func (falcon *Falcon) getLibertineApps(query string) Applications {
+    var appList Applications
+
+    //Note, we don't want to fail if we encounter an error in here (hence the long chain of if/else)
+    containerOutput, err := exec.Command("libertine-container-manager", "list").Output()
+    if err != nil {
+        log.Println("Error while listing libertine containers:")
+        log.Println(err)
+    } else {
+        log.Printf("libertine containers: %s", containerOutput)
+        containerList := strings.Split(string(containerOutput), "\n")
+        log.Printf("containers: %v", containerList)
+        for index := range containerList {
+            if len(containerList[index]) > 0 {
+                appOutput, err := exec.Command("libertine-container-manager", "list-apps", "--json", "--id", containerList[index]).Output()
+                if err != nil {
+                    log.Printf("Error while listing apps in %s:", containerList[index])
+                    log.Println(err)
+                } else {
+                    var libertineApps LibertineApps
+                    if err = json.Unmarshal(appOutput, &libertineApps); err != nil {
+                        log.Printf("Error while decoding apps in %s:", containerList[index])
+                        log.Println(err)
+                    } else {
+                        for jindex := range libertineApps.AppLaunchers {
+                            if !libertineApps.AppLaunchers[jindex].NoDisplay {
+                                //log.Printf("libertine app: %s", libertineApps.AppLaunchers[jindex].Name)
+
+                                id := libertineApps.AppLaunchers[jindex].DesktopFileName //TODO parse this
+                                start := strings.LastIndex(id, "/")
+                                end := strings.LastIndex(id, ".desktop")
+                                id = id[(start + 1):end]
+
+                                var libertineApp Application
+                                libertineApp.Id = id
+                                libertineApp.Title = libertineApps.AppLaunchers[jindex].Name
+                                libertineApp.Sort = strings.ToLower(libertineApps.AppLaunchers[jindex].Name)
+                                libertineApp.Comment = ""
+                                libertineApp.Icon = libertineApps.AppLaunchers[jindex].Icons[0]
+                                libertineApp.Uri = fmt.Sprintf("appid://%s/%s/0.0", containerList[index], id)
+                                libertineApp.IsApp = true
+                                libertineApp.IsDesktop = true
+
+                                if icon, ok := falcon.iconPackMap[libertineApp.Id]; ok {
+                                    iconFile := falcon.iconPack + icon.(string)
+                                    if _, err := os.Stat(iconFile); err == nil {
+                                        libertineApp.Icon = iconFile
+                                    }
+                                }
+
+                                if (query == "" || strings.Index(strings.ToLower(libertineApp.Title), strings.ToLower(query)) >= 0) {
+                                    appList = append(appList, libertineApp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return appList
+}
+
 func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
     var settings Settings
     falcon.base.Settings(&settings)
@@ -102,6 +207,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
                     app.Desktop = string(content)
                     app.Uri = "application:///" + f.Name()
                     app.IsApp = true
+                    app.IsDesktop = false
 
                     skip := true
                     nodisplay := false
@@ -226,37 +332,10 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
     }
 
     //Remote scopes
-    file, err := ioutil.ReadFile("/home/phablet/.cache/unity-scopes/remote-scopes.json")
-    if err != nil {
-        log.Println(err)
-    } else {
-        var remoteScopes []RemoteScope
-        json.Unmarshal(file, &remoteScopes)
+    appList = append(appList, falcon.getRemoteScopes(query)...)
 
-        for index := range remoteScopes {
-            remoteScope := remoteScopes[index]
-
-            var scope Application
-            scope.Id = remoteScope.Id
-            scope.Title = remoteScope.Name
-            scope.Sort = strings.ToLower(scope.Title)
-            scope.Comment = remoteScope.Description
-            scope.Icon = remoteScope.Icon
-            scope.Uri = fmt.Sprintf("scope://%s", remoteScope.Id)
-            scope.IsApp = false
-
-            if icon, ok := falcon.iconPackMap[scope.Id]; ok {
-                iconFile := falcon.iconPack + icon.(string)
-                if _, err := os.Stat(iconFile); err == nil {
-                    scope.Icon = iconFile
-                }
-            }
-
-            if (query == "" || strings.Index(strings.ToLower(scope.Title), strings.ToLower(query)) >= 0) {
-                appList = append(appList, scope)
-            }
-        }
-    }
+    //Desktop/Libertine Apps
+    appList = append(appList, falcon.getLibertineApps(query)...)
 
     sort.Sort(appList)
 
@@ -267,6 +346,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
 
     if (settings.Layout == 0) { //Group by apps & scopes
         categories["apps"] = reply.RegisterCategory("apps", "Apps", "", searchCategoryTemplate)
+        categories["desktop"] = reply.RegisterCategory("desktop", "Desktop Apps", "", searchCategoryTemplate)
         categories["scopes"] = reply.RegisterCategory("scopes", "Scopes", "", searchCategoryTemplate)
     } else { //Group by first letter
         //TODO ignore A/An/The
@@ -296,6 +376,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
     }
     storeCategory := reply.RegisterCategory("store", searchTitle, "", searchCategoryTemplate)
 
+    //Favorites
     for index := range appList {
         app := appList[index]
 
@@ -314,11 +395,12 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
         }
     }
 
+    //Apps first, or all if they are joined
     for index := range appList {
         app := appList[index]
 
         //See note at next for loop
-        if (settings.Layout == 0 && !app.IsApp) || falcon.isFavorite(app.Id) {
+        if (settings.Layout == 0 && !app.IsApp) || falcon.isFavorite(app.Id) || (settings.Layout == 0 && settings.SeparateDesktop && app.IsDesktop) {
             continue
         }
 
@@ -333,7 +415,9 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
             char := strings.ToUpper(falcon.firstChar(app.Title))
             result = scopes.NewCategorisedResult(categories[char])
 
-            if (app.IsApp) {
+            if (app.IsDesktop) {
+                result.Set("subtitle", "Desktop App")
+            } else if (app.IsApp) {
                 result.Set("subtitle", "App")
             } else {
                 result.Set("subtitle", "Scope")
@@ -352,6 +436,30 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
         }
     }
 
+    //Desktop apps (if separated)
+    if settings.SeparateDesktop && settings.Layout == 0 {
+        for index := range appList {
+            app := appList[index]
+
+            if (!app.IsDesktop || falcon.isFavorite(app.Id)) {
+                continue
+            }
+
+            result := scopes.NewCategorisedResult(categories["desktop"])
+            result.SetURI(app.Uri)
+            result.SetTitle(app.Title)
+            result.SetArt(app.Icon)
+            result.Set("app", app)
+            result.Set("type", "app")
+            result.SetInterceptActivation()
+
+            if err := reply.Push(result); err != nil {
+                log.Fatalln(err)
+            }
+        }
+    }
+
+    //Scopes last
     //TODO This is a really hacky looking way to make sure the apps go before the scopes, figure out a better way to do this
     if (settings.Layout == 0) {
         for index := range appList {

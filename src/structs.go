@@ -1,8 +1,9 @@
 package main
 
 type Settings struct {
-    Layout int64 `json:"layout"`
-    Ids    bool  `json:"ids"`
+    Layout          int64 `json:"layout"`
+    Ids             bool  `json:"ids"`
+    SeparateDesktop bool  `json:"separate_desktop"`
 }
 
 type ActionInfo struct {
@@ -13,14 +14,15 @@ type ActionInfo struct {
 }
 
 type Application struct {
-    Id      string
-    Title   string
-    Comment string
-    Icon    string
-    Uri     string
-    Desktop string
-    IsApp   bool
-    Sort    string
+    Id        string
+    Title     string
+    Comment   string
+    Icon      string
+    Uri       string
+    Desktop   string
+    IsApp     bool
+    IsDesktop bool
+    Sort      string
 }
 
 type RemoteScope struct {
@@ -40,6 +42,18 @@ type IconPack struct {
     Icon       string `json:icon`
     Preview    string `json:preview`
     Comment    string `json:"comment,omitempty"`
+}
+
+type LibertineApp struct {
+    DesktopFileName string   `json:"desktop_file_name"`
+    Icons           []string `json:"icons"`
+    Name            string   `json:"name"`
+    NoDisplay       bool     `json:"no_display"`
+}
+
+type LibertineApps struct {
+    AppLaunchers []LibertineApp `json:"app_launchers"`
+    Name string `json:"name"`
 }
 
 func (slice Applications) Len() int {

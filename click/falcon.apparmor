@@ -1,5 +1,5 @@
 {
-    "template": "ubuntu-scope-network",
+    "template": "unconfined",
     "policy_groups": [
         "networking"
     ],

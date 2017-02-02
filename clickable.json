@@ -8,5 +8,6 @@
     "libglib2.0-dev:armhf",
     "crossbuild-essential-armhf"
   ],
-  "default": "clean build click-build install"
+  "default": "clean build click-build install",
+  "log": ".cache/upstart/scope-registry.log"
 }
