@@ -16,9 +16,10 @@ import (
 const searchCategoryTemplate = `{
     "schema-version": 1,
     "template": {
-        "category-layout": "grid",
+        "category-layout": "%s",
         "collapsed-rows": 0,
-        "card-size": "small"
+        "card-layout": "%s",
+        "card-size": "%s"
     },
     "components" : {
         "title": "title",
@@ -346,13 +347,19 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
 
     categories := map[string] *scopes.Category{};
 
-    //TODO have an option to make this a different layout
-    categories["favorite"] = reply.RegisterCategory("favorites", "Favorites", "", searchCategoryTemplate)
+    categoryLayouts := []string{"grid", "carousel", "vertical-journal", "horizontal-list"}
+    cardLayouts := []string{"vertical", "vertical", "horizontal", "vertical"}
+    cardSizes := []string{"small", "medium", "large"}
+
+    favoritesTemplate := fmt.Sprintf(searchCategoryTemplate, categoryLayouts[settings.FavoritesLayout], cardLayouts[settings.FavoritesLayout], cardSizes[settings.FavoritesSize])
+    appScopeTemplate := fmt.Sprintf(searchCategoryTemplate, categoryLayouts[settings.AppScopeLayout], cardLayouts[settings.AppScopeLayout], cardSizes[settings.AppScopeSize])
+
+    categories["favorite"] = reply.RegisterCategory("favorites", "Favorites", "", favoritesTemplate)
 
     if (settings.Layout == 0) { //Group by apps & scopes
-        categories["apps"] = reply.RegisterCategory("apps", "Apps", "", searchCategoryTemplate)
-        categories["desktop"] = reply.RegisterCategory("desktop", "Desktop Apps", "", searchCategoryTemplate)
-        categories["scopes"] = reply.RegisterCategory("scopes", "Scopes", "", searchCategoryTemplate)
+        categories["apps"] = reply.RegisterCategory("apps", "Apps", "", appScopeTemplate)
+        categories["desktop"] = reply.RegisterCategory("desktop", "Desktop Apps", "", appScopeTemplate)
+        categories["scopes"] = reply.RegisterCategory("scopes", "Scopes", "", appScopeTemplate)
     } else { //Group by first letter
         //TODO ignore A/An/The
         //TODO group numbers
@@ -371,7 +378,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
         sort.Strings(charList)
         for index := range charList {
             char := charList[index]
-            categories[char] = reply.RegisterCategory(char, char, "", searchCategoryTemplate)
+            categories[char] = reply.RegisterCategory(char, char, "", appScopeTemplate)
         }
     }
 
@@ -379,7 +386,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
     if (query != "") {
         searchTitle = fmt.Sprintf("Search for apps like \"%s\"", query)
     }
-    storeCategory := reply.RegisterCategory("store", searchTitle, "", searchCategoryTemplate)
+    storeCategory := reply.RegisterCategory("store", searchTitle, "", fmt.Sprintf(searchCategoryTemplate, "grid", "vertical", "small"))
 
     //Favorites
     for index := range appList {
@@ -526,7 +533,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
     }
 
     //Icon pack result
-    iconPackCategory := reply.RegisterCategory("icon-packs", "Icon Packs", "", searchCategoryTemplate)
+    iconPackCategory := reply.RegisterCategory("icon-packs", "Icon Packs", "", fmt.Sprintf(searchCategoryTemplate, "grid", "vertical", "small"))
 
     result := scopes.NewCategorisedResult(iconPackCategory)
     result.SetURI("scope://falcon.bhdouglass_falcon?q=icon-packs")

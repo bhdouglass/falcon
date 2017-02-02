@@ -4,6 +4,10 @@ type Settings struct {
     Layout          int64 `json:"layout"`
     Ids             bool  `json:"ids"`
     SeparateDesktop bool  `json:"separate_desktop"`
+    FavoritesLayout int64 `json:"favorites_layout"`
+    FavoritesSize   int64 `json:"favorites_size"`
+    AppScopeLayout  int64 `json:"app_scope_layout"`
+    AppScopeSize    int64 `json:"app_scope_size"`
 }
 
 type ActionInfo struct {
