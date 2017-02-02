@@ -133,7 +133,7 @@ func (falcon *Falcon) iconPackSearch(query string, reply *scopes.SearchReply) er
         return err
     }
 
-    iconPackCategory := reply.RegisterCategory("icon-packs", "Icon Packs", "", searchCategoryTemplate)
+    iconPackCategory := reply.RegisterCategory("icon-packs", "Icon Packs", "", iconPackCategoryTemplate)
 
     for index := range iconPacks {
         iconPack := iconPacks[index]
@@ -150,7 +150,7 @@ func (falcon *Falcon) iconPackSearch(query string, reply *scopes.SearchReply) er
         }
     }
 
-    utilitiesCategory := reply.RegisterCategory("icon-packs-utils", "Utilities", "", searchCategoryTemplate)
+    utilitiesCategory := reply.RegisterCategory("icon-packs-utils", "Utilities", "", iconPackCategoryTemplate)
 
     contactResult := scopes.NewCategorisedResult(utilitiesCategory)
     contactResult.SetURI("http://bhdouglass.com/contact.html")
