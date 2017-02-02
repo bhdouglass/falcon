@@ -215,6 +215,11 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
 
                     desktopMap := map[string] string{}
                     for _, line := range lines {
+                        if strings.Contains(line, "Desktop Action") {
+                            //TODO refactor this to be smarter when parsing the different sections of the desktop file
+                            break
+                        }
+
                         split := strings.Split(line, "=")
                         if (len(split) >= 2) {
                             key := split[0]
