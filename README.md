@@ -9,6 +9,12 @@ Get it in the [OpenStore](https://open.uappexplorer.com/app/falcon.bhdouglass).
 The Falcon is a family of rockets developed by SpaceX for carrying payloads into
 space. For more information check out this [Wikipedia article](https://en.wikipedia.org/wiki/Falcon_1).
 
+## Icon Packs
+
+Falcon can change the app icons based on installed icon packs. Download them
+from the [Ubuntu App Store](https://uappexplorer.com/apps?q=icon-packs) and
+select your favorite one in Falcon!
+
 ## Building
 
 The easiest way to compile and package indicator weather is via [clickable](https://github.com/bhdouglass/clickable).
