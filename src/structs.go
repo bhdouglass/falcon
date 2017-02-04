@@ -40,13 +40,13 @@ type RemoteScope struct {
 type Applications []Application
 
 type IconPack struct {
-    Title      string `json:title`
-    Archive    string `json:archive`
-    Author     string `json:"author,omitempty"`
-    Maintainer string `json:"maintainer,omitempty"`
-    Icon       string `json:icon`
-    Preview    string `json:preview`
-    Comment    string `json:"comment,omitempty"`
+    Title       string `json:"title"`
+    Icons       string `json:"icons"`
+    Author      string `json:"author,omitempty"`
+    Maintainer  string `json:"maintainer,omitempty"`
+    Icon        string `json:"icon"`
+    Preview     string `json:"preview"`
+    Description string `json:"description,omitempty"`
 }
 
 type LibertineApp struct {

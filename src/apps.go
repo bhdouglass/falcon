@@ -91,17 +91,10 @@ func (falcon *Falcon) getRemoteScopes(query string) Applications {
             scope.Title = remoteScope.Name
             scope.Sort = strings.ToLower(scope.Title)
             scope.Comment = remoteScope.Description
-            scope.Icon = remoteScope.Icon
+            scope.Icon = falcon.getIcon(remoteScope.Id, remoteScope.Icon)
             scope.Uri = fmt.Sprintf("scope://%s", remoteScope.Id)
             scope.IsApp = false
             scope.IsDesktop = false
-
-            if icon, ok := falcon.iconPackMap[scope.Id]; ok {
-                iconFile := falcon.iconPack + icon.(string)
-                if _, err := os.Stat(iconFile); err == nil {
-                    scope.Icon = iconFile
-                }
-            }
 
             if (query == "" || strings.Index(strings.ToLower(scope.Title), strings.ToLower(query)) >= 0) {
                 appList = append(appList, scope)
@@ -151,17 +144,10 @@ func (falcon *Falcon) getLibertineApps(query string) Applications {
                                 libertineApp.Title = libertineApps.AppLaunchers[jindex].Name
                                 libertineApp.Sort = strings.ToLower(libertineApps.AppLaunchers[jindex].Name)
                                 libertineApp.Comment = ""
-                                libertineApp.Icon = libertineApps.AppLaunchers[jindex].Icons[0]
+                                libertineApp.Icon = falcon.getIcon(id, libertineApps.AppLaunchers[jindex].Icons[0])
                                 libertineApp.Uri = fmt.Sprintf("appid://%s/%s/0.0", containerList[index], id)
                                 libertineApp.IsApp = true
                                 libertineApp.IsDesktop = true
-
-                                if icon, ok := falcon.iconPackMap[libertineApp.Id]; ok {
-                                    iconFile := falcon.iconPack + icon.(string)
-                                    if _, err := os.Stat(iconFile); err == nil {
-                                        libertineApp.Icon = iconFile
-                                    }
-                                }
 
                                 if (query == "" || strings.Index(strings.ToLower(libertineApp.Title), strings.ToLower(query)) >= 0) {
                                     appList = append(appList, libertineApp)
@@ -312,12 +298,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
                         }
                     }
 
-                    if icon, ok := falcon.iconPackMap[app.Id]; ok {
-                        iconFile := falcon.iconPack + icon.(string)
-                        if _, err := os.Stat(iconFile); err == nil {
-                            app.Icon = iconFile
-                        }
-                    }
+                    app.Icon = falcon.getIcon(app.Id, app.Icon)
 
                     if (!skip && !nodisplay && onlyShowIn == "unity") {
                         if (strings.Contains(app.Id, "uappexplorer.bhdouglass")) {
@@ -538,7 +519,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
     result := scopes.NewCategorisedResult(iconPackCategory)
     result.SetURI("scope://falcon.bhdouglass_falcon?q=icon-packs")
     result.SetTitle("Find Icon Packs")
-    result.SetArt(falcon.base.ScopeDirectory() + "/icon-packs.svg")
+    result.SetArt(falcon.getIcon("find-icon-packs", falcon.base.ScopeDirectory() + "/icon-packs.svg"))
     result.Set("type", "icon-packs")
     result.SetInterceptActivation()
 

@@ -1,17 +1,12 @@
 package main
 
 import (
-    "archive/tar"
-    "compress/gzip"
     "encoding/json"
     "fmt"
-    "io"
     "io/ioutil"
     "launchpad.net/go-unityscopes/v2"
     "log"
-    "net/http"
     "os"
-    "strings"
 )
 
 const iconPackCategoryTemplate = `{
@@ -32,13 +27,30 @@ const iconPackCategoryTemplate = `{
 }`
 
 func (falcon *Falcon) iconPackUtilityPreview(result *scopes.Result, metadata *scopes.ActionMetadata, reply *scopes.PreviewReply) error {
-    if result.URI() == "reset" {
+    var subtype string
+    if err := result.Get("sub-type", &subtype); err != nil {
+        log.Println(err)
+    }
+
+    if subtype == "reset" {
         titleWidget := scopes.NewPreviewWidget("title", "header")
         titleWidget.AddAttributeValue("title", "Remove current icon pack")
         titleWidget.AddAttributeValue("subtitle", "Revert back to the default icons")
 
         var buttons []ActionInfo
         buttons = append(buttons, ActionInfo{Id: "icon-pack:reset", Label: "Revert"})
+
+        actionsWidget := scopes.NewPreviewWidget("actions", "actions")
+        actionsWidget.AddAttributeValue("actions", buttons)
+
+        return reply.PushWidgets(titleWidget, actionsWidget)
+    } else if subtype == "find" {
+        titleWidget := scopes.NewPreviewWidget("title", "header")
+        titleWidget.AddAttributeValue("title", "Find new icon packs")
+        titleWidget.AddAttributeValue("subtitle", "Download icon pack apps from the app store")
+
+        var buttons []ActionInfo
+        buttons = append(buttons, ActionInfo{Id: "icon-pack:find", Uri: result.URI(), Label: "Search now"})
 
         actionsWidget := scopes.NewPreviewWidget("actions", "actions")
         actionsWidget.AddAttributeValue("actions", buttons)
@@ -95,51 +107,73 @@ func (falcon *Falcon) iconPackPreview(result *scopes.Result, metadata *scopes.Ac
         }
     }
 
-    if iconPack.Comment != "" {
-        commentWidget := scopes.NewPreviewWidget("comment", "text")
-        commentWidget.AddAttributeValue("text", iconPack.Comment)
+    if iconPack.Description != "" {
+        descriptionWidget := scopes.NewPreviewWidget("description", "text")
+        descriptionWidget.AddAttributeValue("text", iconPack.Description)
 
-        if err := reply.PushWidgets(commentWidget); err != nil {
+        if err := reply.PushWidgets(descriptionWidget); err != nil {
             return err
         }
     }
 
-    var buttons []ActionInfo
 
-    if falcon.iconPackDir(iconPack.Title) == falcon.iconPack {
-        buttons = append(buttons, ActionInfo{Id: "icon-pack:install", Label: "Reinstall"})
-    } else {
-        buttons = append(buttons, ActionInfo{Id: "icon-pack:install", Label: "Install"})
+    if iconPack.Icons != falcon.iconPack {
+        var buttons []ActionInfo
+        buttons = append(buttons, ActionInfo{Id: "icon-pack:install", Label: "Activate"})
+
+        actionsWidget := scopes.NewPreviewWidget("actions", "actions")
+        actionsWidget.AddAttributeValue("actions", buttons)
+
+        if err := reply.PushWidgets(actionsWidget); err != nil {
+            return err
+        }
     }
 
-    actionsWidget := scopes.NewPreviewWidget("actions", "actions")
-    actionsWidget.AddAttributeValue("actions", buttons)
-
-    return reply.PushWidgets(actionsWidget)
+    return nil
 }
 
 func (falcon *Falcon) iconPackSearch(query string, reply *scopes.SearchReply) error {
-    //TODO see about finding a better home for this
-    resp, err := http.Get("https://falcon.bhdouglass.com/icon-packs.json")
-    if err != nil {
-        return err
-    }
-
-    defer resp.Body.Close()
-    decoder := json.NewDecoder(resp.Body)
-
     var iconPacks []IconPack
-    if err = decoder.Decode(&iconPacks); err != nil {
-        return err
+    baseDir := "/opt/click.ubuntu.com/"
+
+    files, err := ioutil.ReadDir(baseDir)
+    if err != nil {
+        log.Println(err)
+    } else {
+        for _, f := range files {
+            path := baseDir + f.Name() + "/current/icon-pack-data.json";
+            if _, err := os.Stat(path); err == nil {
+                log.Printf("Found icon pack: %s", path)
+
+                content, err := ioutil.ReadFile(path)
+                if err != nil {
+                    log.Printf("Error while reading icon pack: %s", path)
+                    log.Println(err)
+                } else {
+                    var iconPack IconPack
+                    if err = json.Unmarshal(content, &iconPack); err != nil {
+                        log.Printf("Error while parsing icon pack: %s", path)
+                        log.Println(err)
+                    } else {
+                        dir := baseDir + f.Name() + "/current/"
+                        iconPack.Icons = dir + iconPack.Icons
+                        iconPack.Icon = dir + iconPack.Icon
+                        iconPack.Preview = dir + iconPack.Preview
+
+                        iconPacks = append(iconPacks, iconPack)
+                    }
+                }
+            }
+        }
     }
 
-    iconPackCategory := reply.RegisterCategory("icon-packs", "Icon Packs", "", iconPackCategoryTemplate)
+    iconPackCategory := reply.RegisterCategory("icon-packs", "Installed Icon Packs", "", iconPackCategoryTemplate)
 
     for index := range iconPacks {
         iconPack := iconPacks[index]
 
         result := scopes.NewCategorisedResult(iconPackCategory)
-        result.SetURI(iconPack.Archive)
+        result.SetURI(iconPack.Icons)
         result.SetTitle(iconPack.Title)
         result.SetArt(iconPack.Icon)
         result.Set("type", "icon-pack")
@@ -152,11 +186,24 @@ func (falcon *Falcon) iconPackSearch(query string, reply *scopes.SearchReply) er
 
     utilitiesCategory := reply.RegisterCategory("icon-packs-utils", "Utilities", "", iconPackCategoryTemplate)
 
+    findResult := scopes.NewCategorisedResult(utilitiesCategory)
+    findResult.SetURI("https://uappexplorer.com/apps?q=icon-packs")
+    findResult.SetTitle("Find new icon packs")
+    findResult.SetArt(falcon.getIcon("find-new-icon-pack", falcon.base.ScopeDirectory() + "/find.svg"))
+    findResult.Set("type", "icon-pack-utility")
+    findResult.Set("sub-type", "find")
+    findResult.SetInterceptActivation()
+
+    if err := reply.Push(findResult); err != nil {
+        log.Fatalln(err)
+    }
+
     contactResult := scopes.NewCategorisedResult(utilitiesCategory)
     contactResult.SetURI("http://bhdouglass.com/contact.html")
     contactResult.SetTitle("Submit an icon pack")
-    contactResult.SetArt(falcon.base.ScopeDirectory() + "/contact.svg")
+    contactResult.SetArt(falcon.getIcon("submit-an-icon-pack", falcon.base.ScopeDirectory() + "/contact.svg"))
     contactResult.Set("type", "icon-pack-utility")
+    contactResult.Set("sub-type", "contact")
     contactResult.SetInterceptActivation()
 
     if err := reply.Push(contactResult); err != nil {
@@ -167,8 +214,9 @@ func (falcon *Falcon) iconPackSearch(query string, reply *scopes.SearchReply) er
         resetResult := scopes.NewCategorisedResult(utilitiesCategory)
         resetResult.SetURI("reset")
         resetResult.SetTitle("Remove current icon pack")
-        resetResult.SetArt(falcon.base.ScopeDirectory() + "/reset.svg")
+        resetResult.SetArt(falcon.getIcon("remove-current-icon-pack", falcon.base.ScopeDirectory() + "/reset.svg"))
         resetResult.Set("type", "icon-pack-utility")
+        resetResult.Set("sub-type", "reset")
         resetResult.SetInterceptActivation()
 
         if err := reply.Push(resetResult); err != nil {
@@ -195,100 +243,6 @@ func (falcon *Falcon) iconPackActivate(result *scopes.Result, metadata *scopes.A
     return resp
 }
 
-func (falcon *Falcon) iconPackDownload(title string, url string) string {
-    filename := strings.ToLower(strings.Replace(title, " ", "-", -1))
-    filename = fmt.Sprintf("%s/%s.tar.gz", falcon.base.TmpDirectory(), filename)
-
-    output, err := os.Create(filename)
-    if err != nil {
-        log.Fatalln(err)
-    }
-    defer output.Close()
-
-    response, err := http.Get(url)
-    if err != nil {
-        log.Fatalln(err)
-    }
-    defer response.Body.Close()
-
-    if _, err := io.Copy(output, response.Body); err != nil {
-        log.Fatalln(err)
-    }
-
-    return filename
-}
-
-func (falcon *Falcon) iconPackDir(title string) string {
-    dir := strings.ToLower(strings.Replace(title, " ", "-", -1))
-    dir = fmt.Sprintf("%s/%s/", falcon.base.CacheDirectory(), dir)
-
-    return dir
-}
-
-//Based off code from https://socketloop.com/tutorials/golang-untar-or-extract-tar-ball-archive-example
-func (falcon *Falcon) iconPackUntar(title string, filename string) string {
-    dir := falcon.iconPackDir(title)
-
-    if err := os.MkdirAll(dir, os.FileMode(0755)); err != nil {
-        log.Fatalln(err)
-    }
-
-    file, err := os.Open(filename)
-    if err != nil {
-        log.Fatalln(err)
-    }
-    defer file.Close()
-
-    fileReader, err := gzip.NewReader(file)
-    if err != nil {
-        log.Fatalln(err)
-    }
-    defer fileReader.Close()
-
-    tarBallReader := tar.NewReader(fileReader)
-
-    for {
-        header, err := tarBallReader.Next()
-        if err != nil {
-            if err == io.EOF {
-                break
-            }
-
-            log.Fatalln(err)
-        }
-
-        fname := header.Name
-        pos := strings.Index(fname, "/")
-        if pos >= 0 {
-            //Remove the top level directory
-            fname = fname[(pos + 1):len(fname)]
-        }
-
-        switch header.Typeflag {
-            case tar.TypeDir: //Directory
-                log.Println("Creating directory :", fname)
-                if err = os.MkdirAll(dir + fname, os.FileMode(0755)); err != nil {
-                    log.Fatalln(err)
-                }
-
-            case tar.TypeReg: //File
-                log.Println("Untarring :", fname)
-                writer, err := os.Create(dir + fname)
-                if err != nil {
-                    log.Fatalln(err)
-                }
-
-                io.Copy(writer, tarBallReader)
-                writer.Close()
-
-            default:
-                log.Printf("Unable to untar type : %c in file %s", header.Typeflag, fname)
-        }
-    }
-
-    return dir
-}
-
 func (falcon *Falcon) iconPackPerformAction(result *scopes.Result, metadata *scopes.ActionMetadata, widgetId, actionId string) *scopes.ActivationResponse {
     var resp *scopes.ActivationResponse
 
@@ -298,9 +252,7 @@ func (falcon *Falcon) iconPackPerformAction(result *scopes.Result, metadata *sco
             log.Println(err)
         }
 
-        filename := falcon.iconPackDownload(iconPack.Title, iconPack.Archive)
-        dir := falcon.iconPackUntar(iconPack.Title, filename)
-        falcon.saveIconPack(dir)
+        falcon.saveIconPack(iconPack.Icons)
 
         //redirect to blank search
         query := scopes.NewCannedQuery("falcon.bhdouglass_falcon", "", "")
@@ -331,8 +283,21 @@ func (falcon *Falcon) saveIconPack(dir string) {
     }
 }
 
+func (falcon *Falcon) getIcon(id string, fallback string) string {
+    iconFile := fallback
+
+    if icon, ok := falcon.iconPackMap[id]; ok {
+        checkFile := falcon.iconPack + "/" + icon.(string)
+        if _, err := os.Stat(checkFile); err == nil {
+            iconFile = checkFile
+        }
+    }
+
+    return iconFile
+}
+
 func (falcon *Falcon) refreshIconPack() {
-    content, err := ioutil.ReadFile(falcon.iconPack + "icon-pack.json")
+    content, err := ioutil.ReadFile(falcon.iconPack + "/icon-pack.json")
     if err == nil {
         var i interface{}
         if err := json.Unmarshal(content, &i); err != nil {
