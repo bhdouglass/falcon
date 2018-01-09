@@ -73,38 +73,6 @@ func (falcon *Falcon) appPreview(result *scopes.Result, metadata *scopes.ActionM
     return reply.PushWidgets(headerWidget, iconWidget, commentWidget, idWidget, actionsWidget)
 }
 
-func (falcon *Falcon) getRemoteScopes(query string) Applications {
-    var appList Applications
-
-    file, err := ioutil.ReadFile("/home/phablet/.cache/unity-scopes/remote-scopes.json")
-    if err != nil {
-        log.Println(err)
-    } else {
-        var remoteScopes []RemoteScope
-        json.Unmarshal(file, &remoteScopes)
-
-        for index := range remoteScopes {
-            remoteScope := remoteScopes[index]
-
-            var scope Application
-            scope.Id = remoteScope.Id
-            scope.Title = remoteScope.Name
-            scope.Sort = strings.ToLower(scope.Title)
-            scope.Comment = remoteScope.Description
-            scope.Icon = falcon.getIcon(remoteScope.Id, remoteScope.Icon)
-            scope.Uri = fmt.Sprintf("scope://%s", remoteScope.Id)
-            scope.IsApp = false
-            scope.IsDesktop = false
-
-            if (query == "" || strings.Index(strings.ToLower(scope.Title), strings.ToLower(query)) >= 0) {
-                appList = append(appList, scope)
-            }
-        }
-    }
-
-    return appList
-}
-
 //TODO cache this data
 func (falcon *Falcon) getLibertineApps(query string) Applications {
     var appList Applications
@@ -286,7 +254,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
                         name := strings.Replace(f.Name(), ".desktop", "", 1)
 
                         //Don't show this scope
-                        if (name != "falcon.bhdouglass_falcon") {
+                        if (name != "falcon.bhdouglass_falcon" && name != "com.canonical.scopes.clickstore") {
                             app.Id = name
                             //Setting a scope uri seems to have the unfortunate side effect of preventing a preview so Falcon handles the activation directly
                             //app.Uri = fmt.Sprintf("scope://%s", name)
@@ -305,7 +273,7 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
                             uappexplorer = app
                         } else if (strings.Contains(app.Id, "uappexplorer-scope.bhdouglass")) {
                             uappexplorerScope = app
-                        } else if (strings.Contains(app.Id, "com.canonical.scopes.clickstore")) {
+                        } else if (strings.Contains(app.Id, "openstore.openstore-team")) {
                             clickstore = app
                         }
 
@@ -317,9 +285,6 @@ func (falcon *Falcon) appSearch(query string, reply *scopes.SearchReply) error {
             }
         }
     }
-
-    //Remote scopes
-    appList = append(appList, falcon.getRemoteScopes(query)...)
 
     //Desktop/Libertine Apps
     appList = append(appList, falcon.getLibertineApps(query)...)
