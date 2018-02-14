@@ -2,7 +2,7 @@
 
 An alternative Ubuntu Touch app & scope launcher.
 
-Get it in the [OpenStore](https://open.uappexplorer.com/app/falcon.bhdouglass).
+Get it in the [OpenStore](https://open-store.io/app/falcon.bhdouglass).
 
 ## What's with the name?
 
