@@ -17,7 +17,7 @@ select your favorite one in Falcon!
 
 ## Building
 
-The easiest way to compile and package indicator weather is via [clickable](https://github.com/bhdouglass/clickable).
+The easiest way to compile and package falcon is via [clickable](https://github.com/bhdouglass/clickable).
 
 ## Resources
 
@@ -30,7 +30,7 @@ The Falcon logo is a modified [rocket icon from Game-icons.net](http://game-icon
 
 ## License
 
-Copyright (C) 2017 [Brian Douglass](http://bhdouglass.com/)
+Copyright (C) 2018 [Brian Douglass](http://bhdouglass.com/)
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License version 3, as published
 by the Free Software Foundation.
