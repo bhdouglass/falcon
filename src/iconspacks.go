@@ -187,7 +187,7 @@ func (falcon *Falcon) iconPackSearch(query string, reply *scopes.SearchReply) er
     utilitiesCategory := reply.RegisterCategory("icon-packs-utils", "Utilities", "", iconPackCategoryTemplate)
 
     findResult := scopes.NewCategorisedResult(utilitiesCategory)
-    findResult.SetURI("https://uappexplorer.com/apps?q=icon-packs")
+    findResult.SetURI("https://open-store.io/?sort=relevance&search=icon-packs")
     findResult.SetTitle("Find new icon packs")
     findResult.SetArt(falcon.getIcon("find-new-icon-pack", falcon.base.ScopeDirectory() + "/find.svg"))
     findResult.Set("type", "icon-pack-utility")
@@ -199,7 +199,7 @@ func (falcon *Falcon) iconPackSearch(query string, reply *scopes.SearchReply) er
     }
 
     contactResult := scopes.NewCategorisedResult(utilitiesCategory)
-    contactResult.SetURI("http://bhdouglass.com/contact.html")
+    contactResult.SetURI("https://bhdouglass.com/contact.html")
     contactResult.SetTitle("Submit an icon pack")
     contactResult.SetArt(falcon.getIcon("submit-an-icon-pack", falcon.base.ScopeDirectory() + "/contact.svg"))
     contactResult.Set("type", "icon-pack-utility")
