@@ -1,13 +1,7 @@
 {
   "template": "custom",
   "build": "../build.sh",
-  "specificDependencies": true,
-  "dependencies": [
-    "golang-go",
-    "golang-go-linux-arm",
-    "libglib2.0-dev:armhf",
-    "crossbuild-essential-armhf"
-  ],
   "default": "clean build click-build install",
-  "log": ".cache/upstart/scope-registry.log"
+  "log": ".cache/upstart/scope-registry.log",
+  "docker_image": "bhdouglass/falcon-build:latest"
 }

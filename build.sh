@@ -5,6 +5,9 @@ set -x
 
 echo "Compiling scope"
 
+export PATH=/usr/local/go/bin:$PATH
+go version
+
 mkdir -p ./tmp
 
 cd ..
